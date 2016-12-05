@@ -9,7 +9,7 @@ cd ..
 
 X = [];
 expressionLabel = [];
-filespath = 'C:\train'; %training folder
+filespath = 'train'; %training folder
 if ~isdir(filespath)
   errorMessage = sprintf('Error: The following folder does not exist:\n%s', filespath);
   uiwait(warndlg(errorMessage));
@@ -38,7 +38,6 @@ for k = 1:length(tiffFiles)
   fullFileName = fullfile(filespath, baseFileName);
   tmp = strsplit(baseFileName,'.');
   tmp{2} = regexprep(tmp{2}, '\d', '');
-  %fprintf(1, 'Now reading %s\n', fullFileName);65536
   switch tmp{2}
       case 'AN'
           %fprintf(1,'Expression: Angry\n');
@@ -185,7 +184,7 @@ dlmwrite('Dictionary2.txt',Dictionary);
 %          "predictions" : predicted labels
 
 queryimages = [];
-filespath = 'C:\train';
+filespath = 'test';
 if ~isdir(filespath)
   errorMessage = sprintf('Error: The following folder does not exist:\n%s', filespath);
   uiwait(warndlg(errorMessage));
@@ -200,7 +199,6 @@ for k = 1:length(tiffFiles)
   queryimages = [queryimages double(reshape(imresize(imread(fullFileName),60/256),3600,1))];
   tmp = strsplit(baseFileName,'.');
   tmp{2} = regexprep(tmp{2}, '\d', '');
-  %fprintf(1, 'Now reading %s\n', fullFileName);65536
   switch tmp{2}
       case 'AN'
           %fprintf(1,'Expression: Angry\n');
