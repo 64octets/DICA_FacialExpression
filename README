@@ -1,0 +1,20 @@
+# Discriminative Incoherent Component Analysis (DICA)
+version: 0.9
+release date: April 12th 2016
+
+**The package implements the DICA proposed in [1].**
+If you use the code please cite [1].
+
+## Code written by Christos Georgakis, 
+iBUG Group, Department of Computing, Imperial College London, London, UK. 
+email: christos.georgakis@imperial.ac.uk
+
+## Contents
+1. DICA.m: function that implements the DICA. 
+2. demo.m: script that demonstrates the application of the DICA on synthetic data.
+
+## References
+[1] Discriminant Incoherent Component Analysis. 
+C. Georgakis, Y. Panagakis, M. Pantic. IEEE Transactions on Image Processing. 25(5): pp. 2021 - 2034, May 2016. 
+
+
