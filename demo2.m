@@ -38,61 +38,63 @@ for k = 1:length(tiffFiles)
   fullFileName = fullfile(filespath, baseFileName);
   tmp = strsplit(baseFileName,'.');
   tmp{2} = regexprep(tmp{2}, '\d', '');
+  [parts,partsmatrix,faces] = getparts(imread(fullFileName));
+  aface = imresize(faces{1},[60 60]);
   switch tmp{2}
       case 'AN'
           %fprintf(1,'Expression: Angry\n');
-          man = [double(reshape(imresize(imread(fullFileName),60/256),3600,1)) man];
+          man = [double(reshape(rgb2gray(aface),3600,1)) man];
           an = an + 1;
-          X = [X double(reshape(imresize(imread(fullFileName),60/256),3600,1))];
+          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 1];
       case 'DI'
           %fprintf(1,'Expression: Disgust\n');
-          mdi = [double(reshape(imresize(imread(fullFileName),60/256),3600,1)) mdi];
+          mdi = [double(reshape(rgb2gray(aface),3600,1)) mdi];
           di = di + 1;
-          X = [X double(reshape(imresize(imread(fullFileName),60/256),3600,1))];
+          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 2];
       case 'FE'
           %fprintf(1,'Expression: Fear\n');
-          mfe = [double(reshape(imresize(imread(fullFileName),60/256),3600,1)) mfe];
+          mfe = [double(reshape(rgb2gray(aface),3600,1)) mfe];
           fe = fe + 1;
-          X = [X double(reshape(imresize(imread(fullFileName),60/256),3600,1))];
+          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 3];
       case 'HA'
           %fprintf(1,'Expression: Happy\n');
-          mha = [double(reshape(imresize(imread(fullFileName),60/256),3600,1)) mha];
+          mha = [double(reshape(rgb2gray(aface),3600,1)) mha];
           ha = ha + 1;
-          X = [X double(reshape(imresize(imread(fullFileName),60/256),3600,1))];
+          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 4];
       case 'NE'
           %fprintf(1,'Expression: Neutral\n');
-          mne = [double(reshape(imresize(imread(fullFileName),60/256),3600,1)) mne];
+          mne = [double(reshape(rgb2gray(aface),3600,1)) mne];
           ne = ne + 1;
-          X = [X double(reshape(imresize(imread(fullFileName),60/256),3600,1))];
+          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 5];
       case 'SA'
           %fprintf(1,'Expression: Sad\n');
-          msa = [double(reshape(imresize(imread(fullFileName),60/256),3600,1)) msa];
+          msa = [double(reshape(rgb2gray(aface),3600,1)) msa];
           sa = sa + 1;
-          X = [X double(reshape(imresize(imread(fullFileName),60/256),3600,1))];
+          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 6];
       case 'SU'
           %fprintf(1,'Expression: Surprise\n');
-          msu = [double(reshape(imresize(imread(fullFileName),60/256),3600,1)) msu];
+          msu = [double(reshape(rgb2gray(aface),3600,1)) msu];
           su = su + 1;
-          X = [X double(reshape(imresize(imread(fullFileName),60/256),3600,1))];
+          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 7];
   end
 
 end
 
 cellX = [];
-cellX{1} = man;
-cellX{2} = mdi;
-cellX{3} = mfe;
-cellX{4} = mha;
-cellX{5} = mne;
-cellX{6} = msa;
-cellX{7} = msu;
+cellX{1} = normaliseColumns(man);
+cellX{2} = normaliseColumns(mdi);
+cellX{3} = normaliseColumns(mfe);
+cellX{4} = normaliseColumns(mha);
+cellX{5} = normaliseColumns(mne);
+cellX{6} = normaliseColumns(msa);
+cellX{7} = normaliseColumns(msu);
 
 %%Normalize each column of X to unit l2-norm .
 % This function was created by author
@@ -115,7 +117,7 @@ for i=1:nc
     opts        = struct('sum',false,'L0',L0,'S0',S0,'max',true,...
         'tau0',3e5,'SPGL1_tol',1e-1,'tol',1e-3);
     [Lrpca,Srpca] = solver_RPCA_SPGL1(cellX{i},lambda,epsilon,[],opts);
-    lowrankA{i} = Lrpca;
+    lowrankA{i} = Lrpca(:,1);
     %Write down low-rank matrix and sprase matrix to rpcaresult.txt
     dlmwrite(strcat(strcat('lowrankA-',int2str(i)),'.txt'),lowrankA{i});
 end
@@ -123,12 +125,12 @@ end
 %%Initialize U V , skinny SVD
 % Output : U,V
 M = [];
-S = [];
+Sum = [];
 N = [];
 U = [];
 V = [];
 for i=1:nc
-    [M{i},S,N{i}] = svd(lowrankA{i},0);
+    [M{i},Sum,N{i}] = svd(lowrankA{i},0);
     U{i} = M{i};
     V{i} = M{i}';
 end
@@ -150,12 +152,19 @@ options.normStyle1 = '*'; % nuclear norm ---> low-rank components for attribute 
 options.normStyle2 = '1'; % ell_1 norm   ---> sparse components for attribute 2
 options.lambda2 = 0.001; % lambda for the sparse component (need to experiment with this to achieve good results)
 % execute
-S = DICA(X,U,V,options);
+S = DICA(X,options);
+
+%% Dictionary
+% Dictionary for attribute 2 classes (e.g., expression)
+SDictionary = cell(7,1);
+U = U';
+for i=1:7
+    SDictionary{i} =  U{i}*S.V{i+1}*X(:,S.indices{i+1});      
+end
 
 %% Normalize Dictionary
 % Normalizing dictionary follows the downloaded function SRC
 
-% Dictionary = [];
 % 
 % sizeofdictionary = size(S.Dictionary1);
 % for i=1:sizeofdictionary(1)
@@ -167,10 +176,10 @@ S = DICA(X,U,V,options);
 % Label = Label';
 % 
 % dlmwrite('Dictionary1.txt',Dictionary);
-
+Dictionary = [];
 sizeofdictionary = size(S.Dictionary2);
 for i=1:sizeofdictionary(1)
-    Dictionary = [Dictionary S.Dictionary2{i}];
+    Dictionary = [Dictionary SDictionary{i}];
 end
 
 Dictionary = normaliseColumns(Dictionary);
@@ -196,7 +205,9 @@ inputlabels = [];
 for k = 1:length(tiffFiles)
   baseFileName = tiffFiles(k).name;
   fullFileName = fullfile(filespath, baseFileName);
-  queryimages = [queryimages double(reshape(imresize(imread(fullFileName),60/256),3600,1))];
+  [parts,partsmatrix,faces] = getparts(imread(fullFileName));
+  aface = imresize(faces{1},[60 60]);
+  queryimages = [queryimages double(reshape(rgb2gray(aface),3600,1))];
   tmp = strsplit(baseFileName,'.');
   tmp{2} = regexprep(tmp{2}, '\d', '');
   switch tmp{2}
@@ -227,7 +238,7 @@ end
 
 queryimages = queryimages';
 
-[predictions,src_scores] = src(Dictionary,expressionLabel,queryimages,0.3);
+[predictions,src_scores] = src(Dictionary,expressionLabel,queryimages,0.001);
 
 % Evaluate
 fail = 0;

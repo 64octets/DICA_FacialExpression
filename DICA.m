@@ -1,4 +1,4 @@
-function Y = DICA(X,U,V,options)
+function Y = DICA(X,options)
 
 % This function implements the Discriminant Incoherent Component Analysis (DICA) proposed in [1]. 
 % If you use the code please cite [1]. 
@@ -120,8 +120,8 @@ E = zeros(d,n); % outliers
 Y = zeros(d,n); % Lagrangian
 N = zeros(d,n); %  (sum_{UiViXDci})
 D = cell(numClasses,1); % the indicator matrices
-% U = cell(numClasses,1); % subspaces
-% V = cell(numClasses,1); % coefficients
+U = cell(numClasses,1); % subspaces
+V = cell(numClasses,1); % coefficients
 VtranspV = cell(numClasses,1); % auxiliary variable to improve efficiency
 indices = cell(numClasses,1);
 frequency = zeros(numClasses,1);
@@ -133,8 +133,8 @@ for i=1:numClasses1
     frequency(i) = numel(indices{i});
     D{i} = zeros(n);
     D{i}(indices{i},indices{i}) = eye(frequency(i));     
-    %U{i} = eye(d,k1); % note: you can use PCA or Robust PCA initialization for the Us and Vs, instead
-    %V{i} = U{i}';
+    U{i} = eye(d,k1); % note: you can use PCA or Robust PCA initialization for the Us and Vs, instead
+    V{i} = U{i}';
     VtranspV{i} = V{i}'*V{i};     
     N = N + U{i}*V{i}*X*D{i};
 end
@@ -299,6 +299,17 @@ for i=1:numClasses2
     Y.Images2{i} =  X(:,indices{i+numClasses1}); 
     Y.Labels2{i} = Y.uniqueLabels2(i)*ones(numel(indices{i+numClasses1}),1);
 end
+
+% % Dictionary for attribute 2 classes (e.g., expression)
+% Y.Dictionary2 = cell(numClasses2,1);
+% Y.Images2 = cell(numClasses2,1);
+% Y.Labels2 = cell(numClasses2,1);
+% for i=1:numClasses2
+%     Y.Dictionary2{i} =  idkU{i}*V{i+numClasses1}*X(:,indices{i+numClasses1});      
+%     Y.Images2{i} =  X(:,indices{i+numClasses1}); 
+%     Y.Labels2{i} = Y.uniqueLabels2(i)*ones(numel(indices{i+numClasses1}),1);
+% end
+
 
 
 end
