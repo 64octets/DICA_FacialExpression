@@ -9,6 +9,7 @@ cd ..
 
 X = [];
 expressionLabel = [];
+identityLabel = [];
 filespath = 'train'; %training folder
 if ~isdir(filespath)
   errorMessage = sprintf('Error: The following folder does not exist:\n%s', filespath);
@@ -17,7 +18,6 @@ if ~isdir(filespath)
 end
 filePattern = fullfile(filespath, '*.tiff');
 tiffFiles = dir(filePattern);
-reshapedimension = 10000;
 nc = 7;
 an = 1;
 man = [];
@@ -33,6 +33,7 @@ sa = 1;
 msa = [];
 su = 1;
 msu = [];
+cellindentityLabel = {[] [] [] [] [] [] []};
 for k = 1:length(tiffFiles)
   baseFileName = tiffFiles(k).name;
   fullFileName = fullfile(filespath, baseFileName);
@@ -40,50 +41,76 @@ for k = 1:length(tiffFiles)
   tmp{2} = regexprep(tmp{2}, '\d', '');
   [parts,partsmatrix,faces] = getparts(imread(fullFileName));
   aface = imresize(faces{1},[60 60]);
+%   % Identity Label
+%   switch tmp{1}
+%       case 'KA'
+%           identityLabel = [identityLabel 1];
+%       case 'KL'
+%           identityLabel = [identityLabel 2];
+%       case 'KM'
+%           identityLabel = [identityLabel 3];
+%       case 'KR'
+%           identityLabel = [identityLabel 4];
+%       case 'MK'
+%           identityLabel = [identityLabel 5];
+%       case 'NA'
+%           identityLabel = [identityLabel 6];
+%       case 'NM'
+%           identityLabel = [identityLabel 7];
+%       case 'TM'
+%           identityLabel = [identityLabel 8];
+%       case 'UY'
+%           identityLabel = [identityLabel 9];
+%       case 'YM'
+%           identityLabel = [identityLabel 10];
+%   end
+%   
+  % Expression Label
   switch tmp{2}
       case 'AN'
           %fprintf(1,'Expression: Angry\n');
           man = [double(reshape(rgb2gray(aface),3600,1)) man];
           an = an + 1;
-          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 1];
+          cellindentityLabel{1} = [cellindentityLabel{1} getidentityid(tmp{1})];
       case 'DI'
           %fprintf(1,'Expression: Disgust\n');
           mdi = [double(reshape(rgb2gray(aface),3600,1)) mdi];
           di = di + 1;
-          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 2];
+          cellindentityLabel{2} = [cellindentityLabel{2} getidentityid(tmp{1})];
       case 'FE'
           %fprintf(1,'Expression: Fear\n');
           mfe = [double(reshape(rgb2gray(aface),3600,1)) mfe];
           fe = fe + 1;
-          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 3];
+          cellindentityLabel{3} = [cellindentityLabel{3} getidentityid(tmp{1})];
       case 'HA'
           %fprintf(1,'Expression: Happy\n');
           mha = [double(reshape(rgb2gray(aface),3600,1)) mha];
           ha = ha + 1;
-          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 4];
+          cellindentityLabel{4} = [cellindentityLabel{4} getidentityid(tmp{1})];
       case 'NE'
           %fprintf(1,'Expression: Neutral\n');
           mne = [double(reshape(rgb2gray(aface),3600,1)) mne];
           ne = ne + 1;
-          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 5];
+          cellindentityLabel{5} = [cellindentityLabel{5} getidentityid(tmp{1})];
       case 'SA'
           %fprintf(1,'Expression: Sad\n');
           msa = [double(reshape(rgb2gray(aface),3600,1)) msa];
           sa = sa + 1;
-          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 6];
+          cellindentityLabel{6} = [cellindentityLabel{6} getidentityid(tmp{1})];
       case 'SU'
           %fprintf(1,'Expression: Surprise\n');
           msu = [double(reshape(rgb2gray(aface),3600,1)) msu];
           su = su + 1;
-          X = [X double(reshape(rgb2gray(aface),3600,1))];
           expressionLabel = [expressionLabel 7];
+          cellindentityLabel{7} = [cellindentityLabel{7} getidentityid(tmp{1})];
   end
+  
 
 end
 
@@ -95,6 +122,12 @@ cellX{4} = normaliseColumns(mha);
 cellX{5} = normaliseColumns(mne);
 cellX{6} = normaliseColumns(msa);
 cellX{7} = normaliseColumns(msu);
+X = [];
+X = [X man mdi mfe mha mne msa msu];
+expressionLabel = sort(expressionLabel);
+for i=1:7
+    identityLabel = [identityLabel cellindentityLabel{i}];
+end
 
 %%Normalize each column of X to unit l2-norm .
 % This function was created by author
@@ -117,7 +150,7 @@ for i=1:nc
     opts        = struct('sum',false,'L0',L0,'S0',S0,'max',true,...
         'tau0',3e5,'SPGL1_tol',1e-1,'tol',1e-3);
     [Lrpca,Srpca] = solver_RPCA_SPGL1(cellX{i},lambda,epsilon,[],opts);
-    lowrankA{i} = Lrpca(:,1);
+    lowrankA{i} = Lrpca;
     %Write down low-rank matrix and sprase matrix to rpcaresult.txt
     dlmwrite(strcat(strcat('lowrankA-',int2str(i)),'.txt'),lowrankA{i});
 end
@@ -142,49 +175,35 @@ end
 % params
 options = struct;
 % necessary fields
-options.Labels{1} = ones(1,N); % Class Labels w.r.t. attribute 1 
+options.Labels{1} = identityLabel; % Class Labels w.r.t. attribute 1 
 options.Labels{2} = expressionLabel; % Class Labels w.r.t. attribute 2
 % optional fields
 options.eta = 0.1; % mutual incoherence param
-options.rank1 = 1; % dimension of subspace corresponding to attribute 1
+options.rank1 = 7; % dimension of subspace corresponding to attribute 1
 options.rank2 = 7; % dimension of subspace corresponding to attribute 2
 options.normStyle1 = '*'; % nuclear norm ---> low-rank components for attribute 1
 options.normStyle2 = '1'; % ell_1 norm   ---> sparse components for attribute 2
 options.lambda2 = 0.001; % lambda for the sparse component (need to experiment with this to achieve good results)
 % execute
-S = DICA(X,options);
+S = DICA(X,U,options);
 
 %% Dictionary
-% Dictionary for attribute 2 classes (e.g., expression)
-SDictionary = cell(7,1);
-U = U';
-for i=1:7
-    SDictionary{i} =  U{i}*S.V{i+1}*X(:,S.indices{i+1});      
-end
 
 %% Normalize Dictionary
 % Normalizing dictionary follows the downloaded function SRC
 
-% 
-% sizeofdictionary = size(S.Dictionary1);
-% for i=1:sizeofdictionary(1)
-%     Dictionary = [Dictionary S.Dictionary1{i}];
-% end
-% 
-% Dictionary = normaliseColumns(Dictionary);
-% Dictionary = Dictionary';
-% Label = Label';
-% 
-% dlmwrite('Dictionary1.txt',Dictionary);
 Dictionary = [];
 sizeofdictionary = size(S.Dictionary2);
+newexpressionLabel = [];
 for i=1:sizeofdictionary(1)
-    Dictionary = [Dictionary SDictionary{i}];
+    Dictionary = [Dictionary S.Dictionary2{i}];
+    newexpressionLabel = [newexpressionLabel S.Labels2{i}'];
 end
 
-Dictionary = normaliseColumns(Dictionary);
-Dictionary = Dictionary';
-expressionLabel = expressionLabel';
+Dictionary = normaliseColumns(Dictionary); % Nomarlize Dictionary
+Dictionary = Dictionary'; % SRC function input format for Dictionary
+newexpressionLabel = newexpressionLabel'; % SRC function input format for Label
+
 
 dlmwrite('Dictionary2.txt',Dictionary);
 
@@ -238,7 +257,7 @@ end
 
 queryimages = queryimages';
 
-[predictions,src_scores] = src(Dictionary,expressionLabel,queryimages,0.001);
+[predictions,src_scores] = src(Dictionary,newexpressionLabel,queryimages,0.01);
 
 % Evaluate
 fail = 0;
@@ -253,5 +272,5 @@ for i=1:numoftestpoints(1)
     end
 end
 
-evaluate = niceokgood*100/numoftestpoints(1);
+accuracy = niceokgood*100/numoftestpoints(1);
 
